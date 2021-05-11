@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -21,12 +24,14 @@ namespace WebApp.Controllers
         private readonly WebAppDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public TeachersController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, WebAppDbContext context)
+        public TeachersController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, WebAppDbContext context, IWebHostEnvironment webHostEnvironment)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _context = context;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         // GET: Teachers
@@ -83,6 +88,8 @@ namespace WebApp.Controllers
             {
                 return NotFound();
             }
+
+            ViewData["ProfilePicture"] = String.IsNullOrEmpty(teacher.User.ProfilePicture) ? "default.png" : teacher.User.ProfilePicture;
 
             return View(teacher);
         }
@@ -152,6 +159,8 @@ namespace WebApp.Controllers
                 return NotFound();
             }
 
+            ViewData["ProfilePicture"] = String.IsNullOrEmpty(teacher.User.ProfilePicture) ? "default.png" : teacher.User.ProfilePicture;
+
             TeacherUserViewModel teacherUserViewModel = new TeacherUserViewModel
             {
                 Teacher = teacher,
@@ -176,16 +185,18 @@ namespace WebApp.Controllers
             {
                 try
                 {
-                    _context.Update(teacherUserViewModel.Teacher);
-                    await _context.SaveChangesAsync();
+                    string uniqueFileName = UploadedFile(teacherUserViewModel);
 
                     var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == teacherUserViewModel.Teacher.UserId);
                     user.FirstName = teacherUserViewModel.Teacher.User.FirstName;
                     user.LastName = teacherUserViewModel.Teacher.User.LastName;
+                    user.ProfilePicture = uniqueFileName;
+
+                    teacherUserViewModel.Teacher.User = null;
 
                     _context.Entry(user).State = EntityState.Modified;
+                    _context.Update(teacherUserViewModel.Teacher);
                     await _context.SaveChangesAsync();
-
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -201,6 +212,23 @@ namespace WebApp.Controllers
                 return RedirectToAction(nameof(Index));
             }
             return View(teacherUserViewModel);
+        }
+
+        private string UploadedFile(TeacherUserViewModel model)
+        {
+            string uniqueFileName = null;
+
+            if (model.ProfilePicture != null)
+            {
+                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images");
+                uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(model.ProfilePicture.FileName);
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    model.ProfilePicture.CopyTo(fileStream);
+                }
+            }
+            return uniqueFileName;
         }
 
         // GET: Teachers/Delete/5

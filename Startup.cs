@@ -44,6 +44,13 @@ namespace WebApp
             services.AddTransient<IEmailSender, AuthMessageSender>();
             services.AddTransient<ISmsSender, AuthMessageSender>();
 
+            services.AddCors(o => o.AddPolicy("policy", builder =>
+            {
+                builder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
+            }));
+
             services.ConfigureApplicationCookie(options =>
             {
                 options.LoginPath = new PathString("/Account/Login");

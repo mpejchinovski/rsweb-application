@@ -178,6 +178,8 @@ namespace WebApp.Controllers
                         throw;
                     }
                 }
+                if (User.IsInRole("Teacher"))
+                    return RedirectToAction("Index", "Courses");
                 return RedirectToAction(nameof(Index));
             }
             ViewData["CourseId"] = new SelectList(_context.Courses, "Id", "Title", enrollment.CourseId);

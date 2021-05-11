@@ -24,6 +24,6 @@ namespace WebApp.Models
             get { return String.Format("{0} {1}", FirstName, LastName); }
         }
 
-        public byte[] ProfilePicture { get; set; }
+        public string ProfilePicture { get; set; }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using WebApp.Models;
 
@@ -13,10 +14,12 @@ namespace WebApp.Models
         
         [Display(Name = "Course")]
         public int CourseId { get; set; }
+        [JsonIgnore]
         public Course Course { get; set; }
        
         [Display(Name = "Student")]
         public long StudentId { get; set; }
+        [JsonIgnore]
         public Student Student { get; set; }
         
         [StringLength(10)]

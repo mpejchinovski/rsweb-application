@@ -6,9 +6,11 @@
 
 <h1>Index</h1>
 
+@if (User.IsInRole("Admin")) {
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create" asp-route-courseId="@Context.Request.Query["courseId"]" asp-route-studentId="@Context.Request.Query["studentId"]">Create New</a>
 </p>
+}
 
 <form asp-controller="Enrollments" asp-action="Index" method="get">
     <label asp-for="Year" class="control-label"></label>

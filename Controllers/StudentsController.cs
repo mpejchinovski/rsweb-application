@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -20,12 +22,14 @@ namespace WebApp.Controllers
         private readonly WebAppDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public StudentsController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, WebAppDbContext context)
+        public StudentsController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, WebAppDbContext context, IWebHostEnvironment webHostEnvironment)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _context = context;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         // GET: Students
@@ -49,16 +53,6 @@ namespace WebApp.Controllers
             return View(studentFilterVM);
         }
 
-        // GET: Students/5/Enrollments
-        [Route("Students/{id?}/Enrollments")]
-        public async Task<IActionResult> Enrollments(long? id)
-        {
-            var enrollments = await _context.Enrollments.Where(e => e.StudentId == id).Include(e => e.Course).ToListAsync();
-
-            ViewData["StudentName"] = _context.Students.Find(id).User;
-            return View(enrollments);
-        }
-
         public IActionResult EnrollStudent(int id)
         {
             return RedirectToAction("Create", "Enrollments", new { studentId = id });
@@ -72,12 +66,14 @@ namespace WebApp.Controllers
                 return NotFound();
             }
 
-            var student = await _context.Students
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var student = await _context.Students.Include(s => s.User).FirstOrDefaultAsync(m => m.Id == id);
+
             if (student == null)
             {
                 return NotFound();
             }
+
+            ViewData["ProfilePicture"] = String.IsNullOrEmpty(student.User.ProfilePicture) ? "default.png" : student.User.ProfilePicture;
 
             return View(student);
         }
@@ -146,7 +142,15 @@ namespace WebApp.Controllers
             {
                 return NotFound();
             }
-            return View(student);
+
+            ViewData["ProfilePicture"] = String.IsNullOrEmpty(student.User.ProfilePicture) ? "default.png" : student.User.ProfilePicture;
+
+            StudentUserViewModel studentUserViewModel = new StudentUserViewModel
+            {
+                Student = student,
+            };
+
+            return View(studentUserViewModel);
         }
 
         // POST: Students/Edit/5
@@ -154,9 +158,9 @@ namespace WebApp.Controllers
         // more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(long id, [Bind("Id,StudentId,FirstName,LastName,EnrollmentDate,AcquiredCredits,CurrentSemester,EducationLevel")] Student student)
+        public async Task<IActionResult> Edit(int id, StudentUserViewModel studentUserViewModel)
         {
-            if (id != student.Id)
+            if (id != studentUserViewModel.Student.Id)
             {
                 return NotFound();
             }
@@ -165,12 +169,22 @@ namespace WebApp.Controllers
             {
                 try
                 {
-                    _context.Update(student);
+                    string uniqueFileName = UploadedFile(studentUserViewModel);
+
+                    var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == studentUserViewModel.Student.UserId);
+                    user.FirstName = studentUserViewModel.Student.User.FirstName;
+                    user.LastName = studentUserViewModel.Student.User.LastName;
+                    user.ProfilePicture = uniqueFileName;
+
+                    studentUserViewModel.Student.User = null;
+
+                    _context.Entry(user).State = EntityState.Modified;
+                    _context.Update(studentUserViewModel.Student);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!StudentExists(student.Id))
+                    if (!StudentExists(studentUserViewModel.Student.Id))
                     {
                         return NotFound();
                     }
@@ -181,7 +195,24 @@ namespace WebApp.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(student);
+            return View(studentUserViewModel);
+        }
+
+        private string UploadedFile(StudentUserViewModel model)
+        {
+            string uniqueFileName = null;
+
+            if (model.ProfilePicture != null)
+            {
+                string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images");
+                uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(model.ProfilePicture.FileName);
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    model.ProfilePicture.CopyTo(fileStream);
+                }
+            }
+            return uniqueFileName;
         }
 
         // GET: Students/Delete/5

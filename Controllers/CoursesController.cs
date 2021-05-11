@@ -23,7 +23,6 @@ namespace WebApp.Controllers
             _context = context;
         }
 
-        // GET: Courses
         [Authorize(Roles = "Admin,Teacher")]
         public async Task<IActionResult> Index(string TitleString, int Semester, string ProgrammeString, int? teacherId)
         {
@@ -47,7 +46,12 @@ namespace WebApp.Controllers
                         if (teacherId != null && teacherId != await _context.Teachers.Where(t => t.UserId == userIdValue).Select(t => t.Id).FirstOrDefaultAsync())
                             return Redirect("Identity/Account/AccessDenied");
 
-                        courses = _context.Courses.Where(c => c.Teacher1.User.Id == userIdValue || c.Teacher2.User.Id == userIdValue);
+                        var currentTeacherId = await _context.Teachers.Where(t => t.UserId == userIdValue).Select(t => t.Id).FirstOrDefaultAsync();
+
+                        ViewData["CourseId"] = new SelectList(_context.Courses.Where(c => c.FirstTeacherId == currentTeacherId || c.SecondTeacherId == currentTeacherId), "Id", "Title");
+                        ViewData["Year"] = new SelectList(Enumerable.Range(2000, (DateTime.Now.Year - 2000) + 1)).Reverse();
+
+                        return View("~/Views/Courses/StudentList.cshtml");
                     }
                 }
             }
@@ -102,7 +106,6 @@ namespace WebApp.Controllers
         [Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
-
             IEnumerable<SelectListItem> teachers =
                 from teacher in _context.Teachers.Include(t => t.User)
                 select new SelectListItem
