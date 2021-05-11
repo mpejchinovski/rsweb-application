@@ -40,6 +40,35 @@ namespace WebApp.Data
                 .HasOne<Teacher>(c => c.Teacher2)
                 .WithMany(t => t.CoursesSecond)
                 .HasForeignKey(c => c.SecondTeacherId);
+
+            builder.Entity("WebApp.Models.ApplicationUser", b =>
+            {
+                b.ToTable("Users");
+            });
+            builder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
+            {
+                b.ToTable("Roles");
+            });
+            builder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
+            {
+                b.ToTable("RoleClaims");
+            });
+            builder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
+            {
+                b.ToTable("UserClaims");
+            });
+            builder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
+            {
+                b.ToTable("UserLogins");
+            });
+            builder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
+            {
+                b.ToTable("UserRoles");
+            });
+            builder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
+            {
+                b.ToTable("UserTokens");
+            });
         }
     }
 }

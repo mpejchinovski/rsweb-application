@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using WebApp.Data;
 using WebApp.Models;
+using WebApp.ViewModels;
 
 namespace WebApp.Controllers
 {
@@ -20,10 +22,53 @@ namespace WebApp.Controllers
         }
 
         // GET: Enrollments
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? courseId, int? studentId, int? year)
         {
-            var webAppDbContext = _context.Enrollments.Include(e => e.Course).Include(e => e.Student);
-            return View(await webAppDbContext.ToListAsync());
+            ViewData["Year"] = new SelectList(Enumerable.Range(2000, (DateTime.Now.Year - 2000) + 1)).Reverse();
+
+            IQueryable<Enrollment> enrollments = _context.Enrollments.Include(e => e.Course).Include(e => e.Student).ThenInclude(s => s.User);
+
+            if (courseId != null && studentId != null)
+            {
+                enrollments = enrollments.Where(e => e.CourseId == courseId && e.StudentId == studentId);
+            } else
+            {
+                enrollments = courseId != null ? enrollments.Where(e => e.CourseId == courseId) : enrollments;
+                enrollments = studentId != null ? enrollments.Where(e => e.StudentId == studentId) : enrollments;
+            }
+
+            if (User.IsInRole("Student"))
+            {
+                string userIdValue;
+                if (User.Identity is ClaimsIdentity claimsIdentity)
+                {
+                    var userIdClaim = claimsIdentity.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier);
+
+                    if (userIdClaim != null)
+                    {
+                        userIdValue = userIdClaim.Value;
+                        Console.WriteLine(userIdValue);
+
+                        if (studentId != null && studentId != await _context.Students.Where(s => s.UserId == userIdValue).Select(s => s.Id).FirstOrDefaultAsync())
+                            return Redirect("Identity/Account/AccessDenied");
+
+                        if (courseId != null)
+                            return Redirect("Identity/Account/AccessDenied");
+
+                        var teacherId = await _context.Teachers.Where(t => t.UserId == userIdValue).Select(t => t.Id).FirstOrDefaultAsync();
+                        enrollments = enrollments.Where(e => e.Student.User.Id == userIdValue);
+                    }
+                }
+            }
+
+            enrollments = year != null ? enrollments.Where(e => e.Year == year) : enrollments;
+
+            EnrollmentFilterViewModel enrollmentFilterViewModel = new EnrollmentFilterViewModel
+            {
+                Enrollments = await enrollments.ToListAsync()
+            };
+
+            return View(enrollmentFilterViewModel);
         }
 
         // GET: Enrollments/Details/5
@@ -51,8 +96,8 @@ namespace WebApp.Controllers
         {
             ViewData["CourseId"] = courseId != null ? new SelectList(_context.Courses.Where(c => c.Id == courseId), "Id", "Title") :
                 new SelectList(_context.Courses, "Id", "Title");
-            ViewData["StudentId"] = studentId != null ? new SelectList(_context.Students.Where(s => s.Id == studentId), "Id", "FullName") :
-                new SelectList(_context.Students, "Id", "FullName");
+            ViewData["StudentId"] = studentId != null ? new SelectList(_context.Students.Where(s => s.Id == studentId).Include(s => s.User), "Id", "User.FullName") :
+                new SelectList(_context.Students.Include(s => s.User), "Id", "User.FullName");
             return View();
         }
 
@@ -99,7 +144,7 @@ namespace WebApp.Controllers
                 return NotFound();
             }
             ViewData["CourseId"] = new SelectList(_context.Courses.Where(c => c.Id == enrollment.CourseId), "Id", "Title", enrollment.CourseId);
-            ViewData["StudentId"] = new SelectList(_context.Students.Where(s => s.Id == enrollment.StudentId), "Id", "FullName", enrollment.StudentId);
+            ViewData["StudentId"] = new SelectList(_context.Students.Where(s => s.Id == enrollment.StudentId).Include(s => s.User), "Id", "User.FullName", enrollment.StudentId);
             return View(enrollment);
         }
 

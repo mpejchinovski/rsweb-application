@@ -86,3 +86,9 @@ body {
 .teacher-course-buttons :hover {
     text-decoration: underline;
 }
+
+.form-group {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}

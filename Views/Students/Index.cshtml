@@ -25,10 +25,10 @@
                 @Html.DisplayNameFor(model => model.Students.FirstOrDefault().StudentId)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Students.FirstOrDefault().FirstName)
+                @Html.DisplayNameFor(model => model.Students.FirstOrDefault().User.FirstName)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Students.FirstOrDefault().LastName)
+                @Html.DisplayNameFor(model => model.Students.FirstOrDefault().User.LastName)
             </th>
             <th>
                 @Html.DisplayNameFor(model => model.Students.FirstOrDefault().EnrollmentDate)
@@ -52,10 +52,10 @@
                 @Html.DisplayFor(modelItem => item.StudentId)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.FirstName)
+                @Html.DisplayFor(modelItem => item.User.FirstName)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.LastName)
+                @Html.DisplayFor(modelItem => item.User.LastName)
             </td>
             <td>
                 @Html.DisplayFor(modelItem => item.EnrollmentDate)
@@ -70,7 +70,7 @@
                 @Html.DisplayFor(modelItem => item.EducationLevel)
             </td>
             <td>
-                <a asp-action="Enrollments" asp-route-id="@item.Id">Enrollments</a> |
+                <a asp-controller="Enrollments" asp-action="Index" asp-route-studentId="@item.Id">Enrollments</a> |
                 <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
                 <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
                 <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
